@@ -10,14 +10,17 @@ import {
   Menu,
   X,
   History,
-  Cpu
+  Cpu,
+  LogOut
 } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { useAuth } from '../context/AuthContext';
 
 const Navigation = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
   const { user } = useUser();
+  const { signOut } = useAuth();
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
@@ -33,6 +36,11 @@ const Navigation = () => {
     { path: '/technology', icon: Cpu, label: 'Technology' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
+
+  const handleSignOut = async () => {
+    await signOut();
+    setIsMenuOpen(false);
+  };
 
   return (
     <>
@@ -50,9 +58,9 @@ const Navigation = () => {
           <div className="flex items-center space-x-4">
             <div className="text-right">
               <div className="text-sm font-semibold text-blue-600">
-                {user?.aframTokens.toFixed(1)} AFRAM
+                {user?.aframTokens?.toFixed(1) || '0.0'} AFRAM
               </div>
-              <div className="text-xs text-gray-500">Level {user?.level}</div>
+              <div className="text-xs text-gray-500">Level {user?.level || 1}</div>
             </div>
             
             <button
@@ -71,6 +79,9 @@ const Navigation = () => {
           <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-xl transform transition-transform">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900">Menu</h2>
+              {user && (
+                <p className="text-sm text-gray-600 mt-1">Welcome, {user.name}</p>
+              )}
             </div>
             
             <div className="p-4 space-y-2">
@@ -89,6 +100,14 @@ const Navigation = () => {
                   <span className="font-medium">{item.label}</span>
                 </Link>
               ))}
+              
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center space-x-3 p-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="h-5 w-5" />
+                <span className="font-medium">Sign Out</span>
+              </button>
             </div>
           </div>
         </div>

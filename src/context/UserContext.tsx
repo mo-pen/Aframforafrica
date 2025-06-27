@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 interface User {
   id: string;
@@ -15,54 +17,157 @@ interface UserContextType {
   updateUser: (updates: Partial<User>) => void;
   addAframTokens: (amount: number) => void;
   completeQuiz: (quizId: string, score: number) => void;
+  loading: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('afram-user');
-    return savedUser ? JSON.parse(savedUser) : {
-      id: '1',
-      name: 'Student',
-      email: 'student@example.com',
-      aframTokens: 0,
-      level: 1,
-      completedQuizzes: [],
-      achievements: []
-    };
-  });
+  const { user: authUser } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('afram-user', JSON.stringify(user));
+    if (authUser) {
+      loadUserProfile();
+    } else {
+      setUser(null);
+      setLoading(false);
     }
-  }, [user]);
+  }, [authUser]);
 
-  const updateUser = (updates: Partial<User>) => {
-    setUser(prev => prev ? { ...prev, ...updates } : null);
+  const loadUserProfile = async () => {
+    if (!authUser) return;
+
+    try {
+      // Try to get existing user profile
+      const { data: profile, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error && error.code === 'PGRST116') {
+        // User profile doesn't exist, create one
+        const newProfile = {
+          id: authUser.id,
+          name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Student',
+          email: authUser.email || '',
+          afram_tokens: 0,
+          level: 1,
+          completed_quizzes: [],
+          achievements: []
+        };
+
+        const { data: createdProfile, error: createError } = await supabase
+          .from('user_profiles')
+          .insert([newProfile])
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating user profile:', createError);
+          // Fallback to local state
+          setUser({
+            id: authUser.id,
+            name: newProfile.name,
+            email: newProfile.email,
+            aframTokens: 0,
+            level: 1,
+            completedQuizzes: [],
+            achievements: []
+          });
+        } else {
+          setUser({
+            id: createdProfile.id,
+            name: createdProfile.name,
+            email: createdProfile.email,
+            aframTokens: createdProfile.afram_tokens,
+            level: createdProfile.level,
+            completedQuizzes: createdProfile.completed_quizzes || [],
+            achievements: createdProfile.achievements || []
+          });
+        }
+      } else if (profile) {
+        setUser({
+          id: profile.id,
+          name: profile.name,
+          email: profile.email,
+          aframTokens: profile.afram_tokens,
+          level: profile.level,
+          completedQuizzes: profile.completed_quizzes || [],
+          achievements: profile.achievements || []
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user profile:', error);
+      // Fallback to basic user data
+      setUser({
+        id: authUser.id,
+        name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'Student',
+        email: authUser.email || '',
+        aframTokens: 0,
+        level: 1,
+        completedQuizzes: [],
+        achievements: []
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const addAframTokens = (amount: number) => {
-    setUser(prev => prev ? { ...prev, aframTokens: prev.aframTokens + amount } : null);
+  const updateUser = async (updates: Partial<User>) => {
+    if (!user || !authUser) return;
+
+    const updatedUser = { ...user, ...updates };
+    setUser(updatedUser);
+
+    try {
+      await supabase
+        .from('user_profiles')
+        .update({
+          name: updatedUser.name,
+          email: updatedUser.email,
+          afram_tokens: updatedUser.aframTokens,
+          level: updatedUser.level,
+          completed_quizzes: updatedUser.completedQuizzes,
+          achievements: updatedUser.achievements
+        })
+        .eq('id', user.id);
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+    }
   };
 
-  const completeQuiz = (quizId: string, score: number) => {
+  const addAframTokens = async (amount: number) => {
+    if (!user) return;
+    
+    const newTokens = user.aframTokens + amount;
+    const newLevel = Math.floor(newTokens / 10) + 1;
+    
+    await updateUser({ 
+      aframTokens: newTokens, 
+      level: newLevel 
+    });
+  };
+
+  const completeQuiz = async (quizId: string, score: number) => {
     if (!user) return;
     
     const tokensEarned = score * 0.2;
-    const newLevel = Math.floor((user.aframTokens + tokensEarned) / 10) + 1;
+    const newTokens = user.aframTokens + tokensEarned;
+    const newLevel = Math.floor(newTokens / 10) + 1;
+    const newCompletedQuizzes = [...user.completedQuizzes, quizId];
     
-    setUser(prev => prev ? {
-      ...prev,
-      aframTokens: prev.aframTokens + tokensEarned,
+    await updateUser({
+      aframTokens: newTokens,
       level: newLevel,
-      completedQuizzes: [...prev.completedQuizzes, quizId]
-    } : null);
+      completedQuizzes: newCompletedQuizzes
+    });
   };
 
   return (
-    <UserContext.Provider value={{ user, updateUser, addAframTokens, completeQuiz }}>
+    <UserContext.Provider value={{ user, updateUser, addAframTokens, completeQuiz, loading }}>
       {children}
     </UserContext.Provider>
   );
