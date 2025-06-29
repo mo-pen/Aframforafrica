@@ -31,35 +31,37 @@ function App() {
   }, []);
 
   return (
-    <AuthProvider>
-      <AuthWrapper>
-        <UserProvider>
-          <div className="min-h-screen bg-gray-50">
-            {!isOnline && (
-              <div className="bg-red-500 text-white text-center py-2 text-sm">
-                You're offline. Some features may be limited.
-              </div>
-            )}
-            
-            <Navigation />
-            
-            <main className="pb-20">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/courses" element={<Courses />} />
-                <Route path="/quiz/:category?" element={<Quiz />} />
-                <Route path="/farmer-hub" element={<FarmerHub />} />
-                <Route path="/investment" element={<Investment />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/history" element={<History />} />
-                <Route path="/agriculture" element={<Agriculture />} />
-                <Route path="/technology" element={<Technology />} />
-              </Routes>
-            </main>
-          </div>
-        </UserProvider>
-      </AuthWrapper>
-    </AuthProvider>
+    <div className="App">
+      <AuthProvider>
+        <AuthWrapper>
+          <UserProvider>
+            <div className="min-h-screen bg-gray-50">
+              {!isOnline && (
+                <div className="bg-red-500 text-white text-center py-2 text-sm">
+                  You're offline. Some features may be limited.
+                </div>
+              )}
+              
+              <Navigation />
+              
+              <main className="pb-20">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/courses" element={<Courses />} />
+                  <Route path="/quiz/:category?" element={<Quiz />} />
+                  <Route path="/farmer-hub" element={<FarmerHub />} />
+                  <Route path="/investment" element={<Investment />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/history" element={<History />} />
+                  <Route path="/agriculture" element={<Agriculture />} />
+                  <Route path="/technology" element={<Technology />} />
+                </Routes>
+              </main>
+            </div>
+          </UserProvider>
+        </AuthWrapper>
+      </AuthProvider>
+    </div>
   );
 }
 

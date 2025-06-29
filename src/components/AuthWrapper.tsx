@@ -12,21 +12,49 @@ interface AuthWrapperProps {
 const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    let mounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Auth session error:', error);
+          setError('Authentication error. Please refresh the page.');
+        }
+        
+        if (mounted) {
+          setSession(session);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('Auth initialization error:', err);
+        if (mounted) {
+          setError('Failed to initialize authentication');
+          setLoading(false);
+        }
+      }
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setLoading(false);
+      if (mounted) {
+        setSession(session);
+        setLoading(false);
+        setError(null);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
@@ -35,6 +63,26 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
         <div className="text-center">
           <BookOpen className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-pulse" />
           <p className="text-gray-600">Loading Afram EduTech...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="text-red-600 mb-4">
+            <BookOpen className="h-12 w-12 mx-auto mb-4" />
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Connection Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-colors"
+          >
+            Refresh Page
+          </button>
         </div>
       </div>
     );
@@ -75,7 +123,7 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                   input: 'auth-input',
                 },
               }}
-              providers={['google', 'github']}
+              providers={[]}
               redirectTo={window.location.origin}
               onlyThirdPartyProviders={false}
               magicLink={false}
@@ -87,7 +135,6 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                     password_label: 'Password',
                     button_label: 'Sign In',
                     loading_button_label: 'Signing In...',
-                    social_provider_text: 'Sign in with {{provider}}',
                     link_text: "Don't have an account? Sign up",
                   },
                   sign_up: {
@@ -95,7 +142,6 @@ const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
                     password_label: 'Create Password',
                     button_label: 'Create Account',
                     loading_button_label: 'Creating Account...',
-                    social_provider_text: 'Sign up with {{provider}}',
                     link_text: 'Already have an account? Sign in',
                   },
                 },
