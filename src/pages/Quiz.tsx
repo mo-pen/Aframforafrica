@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Brain, Clock, Award, CheckCircle, X, RotateCcw } from 'lucide-react';
+import { Brain, Clock, Award, CheckCircle, X, RotateCcw, Wifi, WifiOff } from 'lucide-react';
 import { useUser } from '../context/UserContext';
+import { offlineStorage } from '../lib/offlineStorage';
 
 const Quiz = () => {
   const { category } = useParams();
@@ -13,6 +14,20 @@ const Quiz = () => {
   const [showResult, setShowResult] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [quizStarted, setQuizStarted] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   const quizzes = {
     history: [
@@ -138,7 +153,7 @@ const Quiz = () => {
     setSelectedAnswer(answerIndex);
   };
 
-  const handleNextQuestion = () => {
+  const handleNextQuestion = async () => {
     if (selectedAnswer === currentQuizData.questions[currentQuestion].correct) {
       setScore(score + 1);
     }
@@ -150,6 +165,17 @@ const Quiz = () => {
     } else {
       setShowResult(true);
       const finalScore = selectedAnswer === currentQuizData.questions[currentQuestion].correct ? score + 1 : score;
+      
+      // Save quiz result offline
+      await offlineStorage.saveQuizResult({
+        category: category || 'general',
+        title: currentQuizData.title,
+        score: finalScore,
+        totalQuestions: currentQuizData.questions.length,
+        tokensEarned: finalScore * 0.2
+      });
+      
+      // Update user progress
       completeQuiz(`${category}-${currentQuiz}`, finalScore);
     }
   };
@@ -173,6 +199,19 @@ const Quiz = () => {
       <div className="pt-20 pb-4">
         <section className="px-4 py-8">
           <div className="max-w-4xl mx-auto">
+            {/* Offline Status */}
+            {!isOnline && (
+              <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <div className="flex items-center space-x-2 text-amber-800">
+                  <WifiOff className="h-5 w-5" />
+                  <span className="font-medium">Offline Mode</span>
+                </div>
+                <p className="text-sm text-amber-700 mt-1">
+                  Your quiz progress will be saved locally and synced when you're back online.
+                </p>
+              </div>
+            )}
+
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
                 Choose Your Quiz
@@ -187,9 +226,16 @@ const Quiz = () => {
                 <div key={index} className="bg-white p-6 rounded-2xl shadow-lg border-2 border-transparent hover:border-blue-200 transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-semibold text-gray-900">{quiz.title}</h3>
-                    <div className="flex items-center text-blue-600">
-                      <Brain className="h-5 w-5 mr-1" />
-                      <span className="text-sm font-medium">{quiz.questions.length} Questions</span>
+                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center text-blue-600">
+                        <Brain className="h-5 w-5 mr-1" />
+                        <span className="text-sm font-medium">{quiz.questions.length} Questions</span>
+                      </div>
+                      {!isOnline && (
+                        <div className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-medium">
+                          Offline
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -233,6 +279,15 @@ const Quiz = () => {
         <section className="px-4 py-8">
           <div className="max-w-2xl mx-auto">
             <div className="bg-white p-8 rounded-2xl shadow-lg text-center">
+              {!isOnline && (
+                <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center justify-center space-x-2 text-green-800">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Progress Saved Offline</span>
+                  </div>
+                </div>
+              )}
+
               <div className="mb-6">
                 {percentage >= 70 ? (
                   <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
@@ -299,9 +354,14 @@ const Quiz = () => {
               <span className="text-sm font-medium text-gray-600">
                 Question {currentQuestion + 1} of {currentQuizData.questions.length}
               </span>
-              <div className="flex items-center text-blue-600">
-                <Clock className="h-4 w-4 mr-1" />
-                <span className="text-sm font-medium">{timeLeft}s</span>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center text-blue-600">
+                  <Clock className="h-4 w-4 mr-1" />
+                  <span className="text-sm font-medium">{timeLeft}s</span>
+                </div>
+                {!isOnline && (
+                  <WifiOff className="h-4 w-4 text-amber-600" />
+                )}
               </div>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
