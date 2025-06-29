@@ -12,5 +12,60 @@
 }
 
 .auth-input {
-  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent;
+}
+
+/* Custom scrollbar for agricultural theme */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-green-50;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-green-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-green-400;
+}
+
+/* Agricultural gradient backgrounds */
+.bg-agricultural-gradient {
+  background: linear-gradient(135deg, #059669 0%, #d97706 50%, #dc2626 100%);
+}
+
+.bg-earth-gradient {
+  background: linear-gradient(135deg, #065f46 0%, #92400e 50%, #7c2d12 100%);
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Custom animation for agricultural elements */
+@keyframes grow {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.animate-grow {
+  animation: grow 2s ease-in-out infinite;
+}
+
+/* Background patterns for agricultural theme */
+.pattern-dots {
+  background-image: radial-gradient(circle, #059669 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.pattern-grid {
+  background-image: 
+    linear-gradient(rgba(5, 150, 105, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(5, 150, 105, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
